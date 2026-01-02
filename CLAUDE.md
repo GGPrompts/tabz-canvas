@@ -119,6 +119,24 @@ When ending a work session, complete ALL steps:
 
 This project connects to the TabzChrome backend on port 8129.
 
+### Branching Strategy
+
+| Project | Branch | Purpose |
+|---------|--------|---------|
+| **tabz-canvas** (this repo) | `main` | Standalone canvas app development |
+| **TabzChrome** (`~/projects/TabzChrome`) | `canvas` | Integration features (sidebar ↔ canvas) |
+
+**IMPORTANT for workers:**
+- Canvas-only features → commit here to `main`
+- Integration features (send to sidebar, shared state) → work on TabzChrome `canvas` branch
+- **NEVER** commit integration changes to TabzChrome `main`
+
+```bash
+# For integration work, switch to canvas branch in TabzChrome
+cd ~/projects/TabzChrome
+git checkout canvas
+```
+
 ### API Endpoints
 | Endpoint | Purpose |
 |----------|---------|
