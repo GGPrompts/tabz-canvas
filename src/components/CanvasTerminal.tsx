@@ -17,6 +17,8 @@ export function CanvasTerminal({ terminal }: Props) {
 
   const [isDragging, setIsDragging] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [editedName, setEditedName] = useState(terminal.name)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [resizeStart, setResizeStart] = useState({ width: 0, height: 0, x: 0, y: 0 })
 
@@ -246,6 +248,33 @@ export function CanvasTerminal({ terminal }: Props) {
     }
   }, [])
 
+  // Name editing handlers
+  const handleNameDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditedName(terminal.name)
+    setIsEditingName(true)
+  }, [terminal.name])
+
+  const handleNameSave = useCallback(() => {
+    const trimmed = editedName.trim()
+    if (trimmed && trimmed !== terminal.name) {
+      updateTerminal(terminal.id, { name: trimmed })
+    } else {
+      setEditedName(terminal.name)
+    }
+    setIsEditingName(false)
+  }, [editedName, terminal.id, terminal.name, updateTerminal])
+
+  const handleNameKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleNameSave()
+    } else if (e.key === 'Escape') {
+      setEditedName(terminal.name)
+      setIsEditingName(false)
+    }
+  }, [handleNameSave, terminal.name])
+
   // Global mouse listeners for drag/resize
   useEffect(() => {
     if (isDragging) {
@@ -293,9 +322,25 @@ export function CanvasTerminal({ terminal }: Props) {
       >
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-[var(--primary)]" />
-          <span className="text-xs font-medium truncate max-w-[200px]">
-            {terminal.name}
-          </span>
+          {isEditingName ? (
+            <input
+              type="text"
+              value={editedName}
+              onChange={(e) => setEditedName(e.target.value)}
+              onBlur={handleNameSave}
+              onKeyDown={handleNameKeyDown}
+              onMouseDown={(e) => e.stopPropagation()}
+              autoFocus
+              className="text-xs font-medium bg-[var(--background)] border border-[var(--border)] rounded px-1 py-0.5 max-w-[200px] outline-none focus:ring-1 focus:ring-[var(--primary)]"
+            />
+          ) : (
+            <span
+              className="text-xs font-medium truncate max-w-[200px] cursor-text"
+              onDoubleClick={handleNameDoubleClick}
+            >
+              {terminal.name}
+            </span>
+          )}
         </div>
         <button
           onClick={() => removeTerminal(terminal.id)}
