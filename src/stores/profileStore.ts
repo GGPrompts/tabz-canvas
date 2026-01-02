@@ -208,15 +208,15 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   fetchProfiles: async () => {
     set({ isLoading: true, error: null })
     try {
-      // Get auth token
-      const tokenRes = await fetch('http://localhost:8129/api/auth-token')
+      // Get auth token (use proxy to avoid CORS)
+      const tokenRes = await fetch('/tabz-api/auth-token')
       if (!tokenRes.ok) {
         throw new Error('Failed to get auth token')
       }
       const { token } = await tokenRes.json()
 
       // Fetch profiles
-      const res = await fetch('http://localhost:8129/api/browser/profiles', {
+      const res = await fetch('/tabz-api/browser/profiles', {
         headers: { 'X-Auth-Token': token },
       })
       if (!res.ok) {

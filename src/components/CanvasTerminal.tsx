@@ -75,15 +75,15 @@ export function CanvasTerminal({ terminal }: Props) {
   // Connect to TabzChrome backend via WebSocket
   const connectToBackend = async (xterm: Terminal) => {
     try {
-      // First, spawn a session via REST API
-      const tokenRes = await fetch('http://localhost:8129/api/auth-token')
+      // First, spawn a session via REST API (use proxy to avoid CORS)
+      const tokenRes = await fetch('/tabz-api/auth-token')
       if (!tokenRes.ok) {
         xterm.writeln('\x1b[31mFailed to get auth token. Is TabzChrome backend running?\x1b[0m')
         return
       }
       const { token } = await tokenRes.json()
 
-      const spawnRes = await fetch('http://localhost:8129/api/spawn', {
+      const spawnRes = await fetch('/tabz-api/spawn', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -108,8 +108,9 @@ export function CanvasTerminal({ terminal }: Props) {
       }
       updateTerminal(terminal.id, { sessionId: sessionName })
 
-      // Connect WebSocket
-      const ws = new WebSocket(`ws://localhost:8129?sessionId=${sessionName}&token=${token}`)
+      // Connect WebSocket via proxy
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      const ws = new WebSocket(`${wsProtocol}//${window.location.host}/tabz-ws?sessionId=${sessionName}&token=${token}`)
       wsRef.current = ws
 
       ws.onopen = () => {
