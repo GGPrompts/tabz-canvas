@@ -115,25 +115,37 @@ When ending a work session, complete ALL steps:
 
 ---
 
-## Connection to TabzChrome
+## TabzChrome Integration
 
-### How It Works
-1. Canvas spawns terminal via `POST /api/spawn`
-2. Backend creates tmux session, returns session name
-3. Canvas opens WebSocket to `ws://localhost:8129?sessionId=xxx`
-4. Terminal I/O flows through WebSocket
+This project connects to the TabzChrome backend on port 8129.
 
-### API Usage
+### API Endpoints
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /api/spawn` | Create terminal (auth required) |
+| `GET /api/agents` | List active terminals |
+| `DELETE /api/agents/:id` | Kill terminal |
+| `GET /api/health` | Health check (no auth) |
+| `GET /api/auth-token` | Get auth token |
+
+### Authentication
 ```bash
-# Get auth token
 TOKEN=$(cat /tmp/tabz-auth-token)
-
-# Spawn terminal
-curl -X POST http://localhost:8129/api/spawn \
-  -H "Content-Type: application/json" \
-  -H "X-Auth-Token: $TOKEN" \
-  -d '{"name": "Canvas Terminal", "workingDir": "~"}'
+curl -H "X-Auth-Token: $TOKEN" ...
 ```
+
+### WebSocket Protocol
+Connect to `ws://localhost:8129?sessionId=xxx&token=xxx`
+
+Message types: `input`, `output`, `resize`, `spawn`, `kill`
+
+### Skills to Use
+When working on this project, use these skills:
+- **xterm-js** - Terminal implementation, resize handling, WebSocket patterns
+- **tabz-mcp** - MCP browser automation tools
+- **tabz-guide** - TabzChrome feature reference
+
+These are available at user level - just reference them when relevant.
 
 ---
 
