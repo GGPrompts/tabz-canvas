@@ -1,8 +1,9 @@
-import { useRef, useState, useCallback, useEffect } from 'react'
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { useCanvasStore, type CanvasTerminal as CanvasTerminalType } from '../stores/canvasStore'
+import { useProfileStore, xtermThemes } from '../stores/profileStore'
 import '@xterm/xterm/css/xterm.css'
 
 interface Props {
@@ -23,6 +24,18 @@ export function CanvasTerminal({ terminal }: Props) {
   const [resizeStart, setResizeStart] = useState({ width: 0, height: 0, x: 0, y: 0 })
 
   const { updateTerminal, removeTerminal, setBackendConnected } = useCanvasStore()
+  const { profiles } = useProfileStore()
+
+  // Get the profile and theme for this terminal
+  const profile = useMemo(() => {
+    if (!terminal.profile) return null
+    return profiles.find(p => p.id === terminal.profile) ?? null
+  }, [terminal.profile, profiles])
+
+  const theme = useMemo(() => {
+    if (!profile) return xtermThemes['high-contrast']
+    return xtermThemes[profile.themeName] ?? xtermThemes['high-contrast']
+  }, [profile])
 
   // Initialize xterm
   useEffect(() => {
@@ -30,15 +43,9 @@ export function CanvasTerminal({ terminal }: Props) {
 
     const xterm = new Terminal({
       cursorBlink: true,
-      fontSize: 13,
-      fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
-      theme: {
-        background: '#0a0a0a',
-        foreground: '#e4e4e7',
-        cursor: '#22c55e',
-        cursorAccent: '#0a0a0a',
-        selectionBackground: '#22c55e40',
-      },
+      fontSize: profile?.fontSize ?? 13,
+      fontFamily: profile?.fontFamily ?? 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
+      theme,
       allowProposedApi: true,
     })
 
@@ -62,7 +69,8 @@ export function CanvasTerminal({ terminal }: Props) {
       wsRef.current?.close()
       xterm.dispose()
     }
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [theme, profile])
 
   // Connect to TabzChrome backend via WebSocket
   const connectToBackend = async (xterm: Terminal) => {
@@ -357,7 +365,7 @@ export function CanvasTerminal({ terminal }: Props) {
       <div
         ref={terminalRef}
         className="h-[calc(100%-36px)] p-1"
-        style={{ background: '#0a0a0a' }}
+        style={{ background: theme.background as string }}
       />
 
       {/* Resize handle */}

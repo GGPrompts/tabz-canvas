@@ -1,11 +1,27 @@
+import { useEffect } from 'react'
 import { useCanvasStore } from '../stores/canvasStore'
+import { useProfileStore } from '../stores/profileStore'
 
 export function Toolbar() {
   const { spawnTerminal, terminals, zoom, setZoom, setOffset, backendConnected } = useCanvasStore()
+  const { profiles, selectedProfileId, isLoading, fetchProfiles, setSelectedProfile } = useProfileStore()
+
+  // Fetch profiles on mount
+  useEffect(() => {
+    fetchProfiles()
+  }, [fetchProfiles])
 
   const handleResetView = () => {
     setOffset({ x: 0, y: 0 })
     setZoom(1)
+  }
+
+  const handleSpawn = () => {
+    const profile = profiles.find(p => p.id === selectedProfileId)
+    spawnTerminal({
+      name: profile?.name || `Terminal ${terminals.length + 1}`,
+      profile: selectedProfileId || undefined,
+    })
   }
 
   return (
@@ -58,8 +74,23 @@ export function Toolbar() {
           Reset View
         </button>
 
+        {/* Profile selector */}
+        <select
+          value={selectedProfileId || ''}
+          onChange={(e) => setSelectedProfile(e.target.value || null)}
+          disabled={isLoading}
+          className="px-2 py-1 text-xs rounded bg-[var(--muted)] border border-[var(--border)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)] min-w-[140px]"
+        >
+          <option value="">Default</option>
+          {profiles.map((profile) => (
+            <option key={profile.id} value={profile.id}>
+              {profile.name}
+            </option>
+          ))}
+        </select>
+
         <button
-          onClick={() => spawnTerminal()}
+          onClick={handleSpawn}
           className="px-3 py-1 text-xs rounded bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity"
         >
           + New Terminal
