@@ -167,6 +167,54 @@ These are available at user level - just reference them when relevant.
 
 ---
 
+## MCP Server
+
+TabzCanvas includes an MCP server (`tabz-canvas-mcp/`) for programmatic terminal spawning.
+
+### Tools
+
+| Tool | Description |
+|------|-------------|
+| `canvas_spawn_terminal` | Spawn terminal at canvas position |
+| `canvas_health` | Check if canvas is running |
+
+### Running the MCP Server
+
+```bash
+cd tabz-canvas-mcp
+npm install
+npm run build
+./run.sh
+```
+
+### Claude Code Configuration
+
+Add to `~/.claude/settings.json`:
+```json
+{
+  "mcpServers": {
+    "canvas": {
+      "command": "/home/matt/projects/tabz-canvas/tabz-canvas-mcp/run.sh"
+    }
+  }
+}
+```
+
+### Tool Schema
+
+```
+canvas_spawn_terminal:
+  - name: string     # Terminal display name
+  - x: number        # Canvas X position (default: 100)
+  - y: number        # Canvas Y position (default: 100)
+  - width: number    # Width 200-2000 (default: 600)
+  - height: number   # Height 150-1500 (default: 400)
+  - command: string  # Initial command (optional)
+  - profile: string  # Theme profile (optional)
+```
+
+---
+
 ## AI Assistant Notes
 
 ### When Making Changes
