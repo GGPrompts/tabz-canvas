@@ -10,6 +10,34 @@ export interface CanvasTerminal {
   profile?: string
 }
 
+export type FileType = 'code' | 'markdown' | 'image' | 'text'
+
+export interface CanvasFile {
+  id: string
+  name: string
+  content: string
+  fileType: FileType
+  language?: string // for syntax highlighting
+  position: { x: number; y: number }
+  size: { width: number; height: number }
+}
+
+export interface SavedLayout {
+  id: string
+  name: string
+  terminals: Array<{
+    name: string
+    position: { x: number; y: number }
+    size: { width: number; height: number }
+    profile?: string
+  }>
+  viewport: {
+    offset: { x: number; y: number }
+    zoom: number
+  }
+  createdAt: number
+}
+
 interface CanvasState {
   // Viewport
   offset: { x: number; y: number }
@@ -17,6 +45,12 @@ interface CanvasState {
 
   // Terminals
   terminals: CanvasTerminal[]
+
+  // Files
+  files: CanvasFile[]
+
+  // Layouts
+  layouts: SavedLayout[]
 
   // Actions
   setOffset: (offset: { x: number; y: number }) => void
@@ -26,6 +60,14 @@ interface CanvasState {
   updateTerminal: (id: string, updates: Partial<CanvasTerminal>) => void
   removeTerminal: (id: string) => void
 
+  addFile: (file: Omit<CanvasFile, 'id'>) => void
+  updateFile: (id: string, updates: Partial<CanvasFile>) => void
+  removeFile: (id: string) => void
+
+  saveLayout: (name: string) => void
+  loadLayout: (id: string) => void
+  deleteLayout: (id: string) => void
+
   // Connection
   backendConnected: boolean
   setBackendConnected: (connected: boolean) => void
@@ -34,8 +76,8 @@ interface CanvasState {
 // Generate unique ID
 const generateId = () => `canvas-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-// Find non-overlapping position for new terminal
-const findFreePosition = (terminals: CanvasTerminal[]): { x: number; y: number } => {
+// Find non-overlapping position for new item
+const findFreePosition = (items: Array<{ position: { x: number; y: number } }>): { x: number; y: number } => {
   const baseX = 100
   const baseY = 100
   const offsetStep = 50
@@ -45,7 +87,7 @@ const findFreePosition = (terminals: CanvasTerminal[]): { x: number; y: number }
   let attempts = 0
 
   while (attempts < 20) {
-    const overlapping = terminals.some(
+    const overlapping = items.some(
       (t) =>
         Math.abs(t.position.x - x) < 100 &&
         Math.abs(t.position.y - y) < 100
@@ -71,6 +113,12 @@ export const useCanvasStore = create<CanvasState>()(
       // Terminals
       terminals: [],
 
+      // Files
+      files: [],
+
+      // Layouts
+      layouts: [],
+
       // Connection
       backendConnected: false,
 
@@ -78,8 +126,9 @@ export const useCanvasStore = create<CanvasState>()(
       setZoom: (zoom) => set({ zoom }),
 
       spawnTerminal: (options = {}) => {
-        const { terminals } = get()
-        const position = options.position || findFreePosition(terminals)
+        const { terminals, files } = get()
+        const allItems = [...terminals, ...files]
+        const position = options.position || findFreePosition(allItems)
 
         const newTerminal: CanvasTerminal = {
           id: generateId(),
@@ -105,6 +154,76 @@ export const useCanvasStore = create<CanvasState>()(
           terminals: state.terminals.filter((t) => t.id !== id),
         })),
 
+      addFile: (file) => {
+        const { terminals, files } = get()
+        const allItems = [...terminals, ...files]
+        const position = file.position || findFreePosition(allItems)
+
+        const newFile: CanvasFile = {
+          id: generateId(),
+          ...file,
+          position,
+        }
+
+        set({ files: [...files, newFile] })
+      },
+
+      updateFile: (id, updates) =>
+        set((state) => ({
+          files: state.files.map((f) =>
+            f.id === id ? { ...f, ...updates } : f
+          ),
+        })),
+
+      removeFile: (id) =>
+        set((state) => ({
+          files: state.files.filter((f) => f.id !== id),
+        })),
+
+      saveLayout: (name) => {
+        const { terminals, offset, zoom, layouts } = get()
+        const newLayout: SavedLayout = {
+          id: generateId(),
+          name,
+          terminals: terminals.map((t) => ({
+            name: t.name,
+            position: t.position,
+            size: t.size,
+            profile: t.profile,
+          })),
+          viewport: { offset, zoom },
+          createdAt: Date.now(),
+        }
+        set({ layouts: [...layouts, newLayout] })
+      },
+
+      loadLayout: (id) => {
+        const { layouts } = get()
+        const layout = layouts.find((l) => l.id === id)
+        if (!layout) return
+
+        // Create new terminals based on layout
+        const newTerminals: CanvasTerminal[] = layout.terminals.map((t) => ({
+          id: generateId(),
+          sessionId: null,
+          name: t.name,
+          position: t.position,
+          size: t.size,
+          profile: t.profile,
+        }))
+
+        set({
+          terminals: newTerminals,
+          offset: layout.viewport.offset,
+          zoom: layout.viewport.zoom,
+        })
+      },
+
+      deleteLayout: (id) =>
+        set((state) => ({
+          layouts: state.layouts.filter((l) => l.id !== id),
+        })),
+
       setBackendConnected: (connected) => set({ backendConnected: connected }),
     }),
     {
@@ -113,6 +232,8 @@ export const useCanvasStore = create<CanvasState>()(
         offset: state.offset,
         zoom: state.zoom,
         terminals: state.terminals,
+        files: state.files,
+        layouts: state.layouts,
       }),
     }
   )

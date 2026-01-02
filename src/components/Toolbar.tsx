@@ -1,15 +1,31 @@
-import { useEffect } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useCanvasStore } from '../stores/canvasStore'
 import { useProfileStore } from '../stores/profileStore'
 
 export function Toolbar() {
-  const { spawnTerminal, terminals, zoom, setZoom, setOffset, backendConnected } = useCanvasStore()
+  const { spawnTerminal, terminals, zoom, setZoom, setOffset, backendConnected, layouts, saveLayout, loadLayout, deleteLayout } = useCanvasStore()
   const { profiles, selectedProfileId, isLoading, fetchProfiles, setSelectedProfile } = useProfileStore()
+  const [showLayoutMenu, setShowLayoutMenu] = useState(false)
+  const [layoutName, setLayoutName] = useState('')
+  const [showSaveInput, setShowSaveInput] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   // Fetch profiles on mount
   useEffect(() => {
     fetchProfiles()
   }, [fetchProfiles])
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowLayoutMenu(false)
+        setShowSaveInput(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const handleResetView = () => {
     setOffset({ x: 0, y: 0 })
@@ -22,6 +38,24 @@ export function Toolbar() {
       name: profile?.name || `Terminal ${terminals.length + 1}`,
       profile: selectedProfileId || undefined,
     })
+  }
+
+  const handleSaveLayout = () => {
+    if (layoutName.trim()) {
+      saveLayout(layoutName.trim())
+      setLayoutName('')
+      setShowSaveInput(false)
+    }
+  }
+
+  const handleLoadLayout = (id: string) => {
+    loadLayout(id)
+    setShowLayoutMenu(false)
+  }
+
+  const handleDeleteLayout = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    deleteLayout(id)
   }
 
   return (
@@ -73,6 +107,81 @@ export function Toolbar() {
         >
           Reset View
         </button>
+
+        {/* Layout controls */}
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setShowLayoutMenu(!showLayoutMenu)}
+            className="px-3 py-1 text-xs rounded bg-[var(--muted)] hover:bg-[var(--border)] transition-colors"
+          >
+            Layouts {layouts.length > 0 && `(${layouts.length})`}
+          </button>
+
+          {showLayoutMenu && (
+            <div className="absolute right-0 top-full mt-1 w-56 rounded border border-[var(--border)] bg-[var(--card)] shadow-lg z-50">
+              {/* Save layout section */}
+              <div className="p-2 border-b border-[var(--border)]">
+                {showSaveInput ? (
+                  <div className="flex gap-1">
+                    <input
+                      type="text"
+                      value={layoutName}
+                      onChange={(e) => setLayoutName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSaveLayout()}
+                      placeholder="Layout name..."
+                      className="flex-1 px-2 py-1 text-xs rounded bg-[var(--background)] border border-[var(--border)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                      autoFocus
+                    />
+                    <button
+                      onClick={handleSaveLayout}
+                      disabled={!layoutName.trim()}
+                      className="px-2 py-1 text-xs rounded bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowSaveInput(true)}
+                    className="w-full px-2 py-1 text-xs text-left rounded hover:bg-[var(--muted)] transition-colors"
+                  >
+                    + Save Current Layout
+                  </button>
+                )}
+              </div>
+
+              {/* Saved layouts list */}
+              <div className="max-h-48 overflow-y-auto">
+                {layouts.length === 0 ? (
+                  <div className="p-2 text-xs text-[var(--muted-foreground)] text-center">
+                    No saved layouts
+                  </div>
+                ) : (
+                  layouts.map((layout) => (
+                    <div
+                      key={layout.id}
+                      onClick={() => handleLoadLayout(layout.id)}
+                      className="flex items-center justify-between px-2 py-1.5 text-xs hover:bg-[var(--muted)] cursor-pointer group"
+                    >
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate">{layout.name}</span>
+                        <span className="text-[var(--muted-foreground)] text-[10px]">
+                          {layout.terminals.length} terminal{layout.terminals.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <button
+                        onClick={(e) => handleDeleteLayout(e, layout.id)}
+                        className="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 text-[var(--muted-foreground)] hover:text-red-500 hover:bg-red-500/10 rounded transition-all"
+                      >
+                        x
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Profile selector */}
         <select
