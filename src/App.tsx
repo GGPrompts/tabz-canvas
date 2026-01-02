@@ -109,28 +109,35 @@ function App() {
     setIsPanning(false)
   }, [])
 
-  // Zoom with wheel
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault()
-    const delta = e.deltaY > 0 ? 0.9 : 1.1
-    const newZoom = Math.min(Math.max(zoom * delta, 0.25), 2)
+  // Zoom with wheel - use native event listener for non-passive
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
 
-    // Zoom toward cursor position
-    const rect = containerRef.current?.getBoundingClientRect()
-    if (rect) {
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const delta = e.deltaY > 0 ? 0.9 : 1.1
+      const currentZoom = useCanvasStore.getState().zoom
+      const currentOffset = useCanvasStore.getState().offset
+      const newZoom = Math.min(Math.max(currentZoom * delta, 0.25), 2)
+
+      // Zoom toward cursor position
+      const rect = container.getBoundingClientRect()
       const mouseX = e.clientX - rect.left
       const mouseY = e.clientY - rect.top
 
       const newOffset = {
-        x: mouseX - (mouseX - offset.x) * (newZoom / zoom),
-        y: mouseY - (mouseY - offset.y) * (newZoom / zoom),
+        x: mouseX - (mouseX - currentOffset.x) * (newZoom / currentZoom),
+        y: mouseY - (mouseY - currentOffset.y) * (newZoom / currentZoom),
       }
 
       setOffset(newOffset)
+      setZoom(newZoom)
     }
 
-    setZoom(newZoom)
-  }, [zoom, offset, setZoom, setOffset])
+    container.addEventListener('wheel', handleWheel, { passive: false })
+    return () => container.removeEventListener('wheel', handleWheel)
+  }, [setZoom, setOffset])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -272,7 +279,6 @@ function App() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}

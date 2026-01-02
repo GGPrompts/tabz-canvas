@@ -20,7 +20,7 @@ export function CanvasTerminal({ terminal }: Props) {
   const [isResizing, setIsResizing] = useState(false)
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(terminal.name)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const [dragStart, setDragStart] = useState({ mouseX: 0, mouseY: 0, termX: 0, termY: 0 })
   const [resizeStart, setResizeStart] = useState({ width: 0, height: 0, x: 0, y: 0 })
 
   const { updateTerminal, removeTerminal, setBackendConnected } = useCanvasStore()
@@ -188,25 +188,31 @@ export function CanvasTerminal({ terminal }: Props) {
     }
   }, [])
 
-  // Drag handlers
+  // Drag handlers - store initial mouse and terminal position
   const handleDragStart = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return
     e.preventDefault()
     e.stopPropagation()
     setIsDragging(true)
+    // Store initial mouse position and terminal position
     setDragStart({
-      x: e.clientX - terminal.position.x,
-      y: e.clientY - terminal.position.y,
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      termX: terminal.position.x,
+      termY: terminal.position.y,
     })
   }, [terminal.position])
 
   const handleDrag = useCallback((e: MouseEvent) => {
     if (!isDragging) return
     const zoom = useCanvasStore.getState().zoom
+    // Calculate delta from initial mouse position, convert to canvas coords
+    const deltaX = (e.clientX - dragStart.mouseX) / zoom
+    const deltaY = (e.clientY - dragStart.mouseY) / zoom
     updateTerminal(terminal.id, {
       position: {
-        x: (e.clientX - dragStart.x) / zoom,
-        y: (e.clientY - dragStart.y) / zoom,
+        x: dragStart.termX + deltaX,
+        y: dragStart.termY + deltaY,
       },
     })
   }, [isDragging, dragStart, terminal.id, updateTerminal])
