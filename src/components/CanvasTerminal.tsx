@@ -100,11 +100,16 @@ export function CanvasTerminal({ terminal }: Props) {
         return
       }
 
-      const { session } = await spawnRes.json()
-      updateTerminal(terminal.id, { sessionId: session.name })
+      const data = await spawnRes.json()
+      const sessionName = data.terminal?.sessionName || data.session?.name
+      if (!sessionName) {
+        xterm.writeln('\x1b[31mNo session name in response\x1b[0m')
+        return
+      }
+      updateTerminal(terminal.id, { sessionId: sessionName })
 
       // Connect WebSocket
-      const ws = new WebSocket(`ws://localhost:8129?sessionId=${session.name}&token=${token}`)
+      const ws = new WebSocket(`ws://localhost:8129?sessionId=${sessionName}&token=${token}`)
       wsRef.current = ws
 
       ws.onopen = () => {
